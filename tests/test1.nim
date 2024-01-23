@@ -8,6 +8,7 @@
 import unittest
 
 import validate
+import std/sets
 test "test-book":
   type
     Category = ref object
@@ -20,15 +21,15 @@ test "test-book":
 
   type
     Book = object
-      isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}")].}: string
+      isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}", tags = ["show"])].}: string
       category {.valid: @[nonNil()].}: Category
-      tags {.valid: @[length(min = 2, max = 4)].}: seq[string]
-      price {.valid: @[frange(min = 5, max = 50)].}: float
+      tags {.valid: @[length(min = 2, max = 4, tags = ["show"])].}: seq[string]
+      price {.valid: @[frange(min = 5, max = 50, tags = ["hide"])].}: float
       case status: Status
       of onsale, sold:
-        count {.valid: @[range(min = 100)].}: int
+        count {.valid: @[range(min = 100, tags = ["hide"])].}: int
 
-  proc validate(book: Book): ValidateResult {.validate.}
+  proc validate(book: Book, tags: varargs[string]): ValidateResult {.validate.}
 
   let category = Category(name: "T")
   let
@@ -41,6 +42,6 @@ test "test-book":
         status: onsale,
         count: 10,
       )
-  let validateResult = book.validate()
+  let validateResult = book.validate("show", "Default")
   for error in validateResult.errors:
     echo error
