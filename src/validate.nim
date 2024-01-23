@@ -1,4 +1,4 @@
-import std/[macros, re, strutils, strformat, tables, sets, sequtils]
+import std/[macros, re, strutils, strformat, tables, sequtils]
 
 type
   ValidateRuleKind* = enum
@@ -14,7 +14,7 @@ type
   ValidateRule* = object
     msgId*: string
     msg*: string
-    tags*: HashSet[string]
+    tags*: seq[string]
     case kind*: ValidateRuleKind
     of rkNonNil, rkNonEmpty, rkNonBlank:
       discard
@@ -70,36 +70,29 @@ type
   ValidateResult* = object
     errors*: seq[ValidateError]
 
-proc toSet(v: openArray[string] = []): HashSet[string] =
-  result =
-    if v.len == 0:
-      HashSet[string]()
-    else:
-      v.toHashSet()
-
 func hasError*(validateResult: ValidateResult): bool =
   validateResult.errors.len > 0
 
 func nonEmpty*(
     msgId: string = "", msg: string = "", tags: openArray[string] = []
 ): ValidateRule =
-  ValidateRule(kind: rkNonEmpty, msgId: msgId, msg: msg, tags: toSet(tags))
+  ValidateRule(kind: rkNonEmpty, msgId: msgId, msg: msg, tags: tags.toSeq())
 
 func nonNil*(
     msgId: string = "", msg: string = "", tags: openArray[string] = []
 ): ValidateRule =
-  ValidateRule(kind: rkNonNil, msgId: msgId, msg: msg, tags: toSet(tags))
+  ValidateRule(kind: rkNonNil, msgId: msgId, msg: msg, tags: tags.toSeq())
 
 func nonBlank*(
     msgId: string = "", msg: string = "", tags: openArray[string] = []
 ): ValidateRule =
-  ValidateRule(kind: rkNonBlank, msgId: msgId, msg: msg, tags: toSet(tags))
+  ValidateRule(kind: rkNonBlank, msgId: msgId, msg: msg, tags: tags.toSeq())
 
 func regex*(
     msgId: string = "", msg: string = "", tags: openArray[string] = [], pattern: string
 ): ValidateRule =
   ValidateRule(
-    kind: rkRegex, msgId: msgId, msg: msg, tags: toSet(tags), pattern: pattern
+    kind: rkRegex, msgId: msgId, msg: msg, tags: tags.toSeq(), pattern: pattern
   )
 
 func range*(
@@ -110,7 +103,7 @@ func range*(
     max: int = int.high,
 ): ValidateRule =
   ValidateRule(
-    kind: rkRange, msgId: msgId, msg: msg, tags: toSet(tags), irange: min..max
+    kind: rkRange, msgId: msgId, msg: msg, tags: tags.toSeq(), irange: min..max
   )
 
 func range*(
@@ -119,7 +112,9 @@ func range*(
     tags: openArray[string] = [],
     irange: Slice[int],
 ): ValidateRule =
-  ValidateRule(kind: rkRange, msgId: msgId, msg: msg, tags: toSet(tags), irange: irange)
+  ValidateRule(
+    kind: rkRange, msgId: msgId, msg: msg, tags: tags.toSeq(), irange: irange
+  )
 
 func frange*(
     msgId: string = "",
@@ -129,7 +124,7 @@ func frange*(
     max: float = float.high,
 ): ValidateRule =
   ValidateRule(
-    kind: rkFloatRange, msgId: msgId, msg: msg, tags: toSet(tags), frange: min..max
+    kind: rkFloatRange, msgId: msgId, msg: msg, tags: tags.toSeq(), frange: min..max
   )
 
 func frange*(
@@ -139,7 +134,7 @@ func frange*(
     frange: Slice[float],
 ): ValidateRule =
   ValidateRule(
-    kind: rkFloatRange, msgId: msgId, msg: msg, tags: toSet(tags), frange: frange
+    kind: rkFloatRange, msgId: msgId, msg: msg, tags: tags.toSeq(), frange: frange
   )
 
 func length*(
@@ -150,7 +145,7 @@ func length*(
     max: Natural = Natural.high,
 ): ValidateRule =
   ValidateRule(
-    kind: rkLengthRange, msgId: msgId, msg: msg, tags: toSet(tags), lenrange: min..max
+    kind: rkLengthRange, msgId: msgId, msg: msg, tags: tags.toSeq(), lenrange: min..max
   )
 
 func length*(
@@ -160,7 +155,7 @@ func length*(
     lenrange: Slice[Natural],
 ): ValidateRule =
   ValidateRule(
-    kind: rkLengthRange, msgId: msgId, msg: msg, tags: toSet(tags), lenrange: lenrange
+    kind: rkLengthRange, msgId: msgId, msg: msg, tags: tags.toSeq(), lenrange: lenrange
   )
 
 # ------ macro -------------------------
@@ -203,11 +198,17 @@ proc validateRule(
       if not rule.lenrange.contains(v.len):
         validateResult.errors.add ValidateError(path: path, rule: rule)
 
+macro doTagFilter(t: untyped, f: static string): untyped =
+  nnkCall.newTree(nnkDotExpr.newTree(t, newIdentNode("anyIt")), parseExpr(f))
+
+const default_tags = @["default"]
+
 template doValidate*(
     validateResult: var ValidateResult,
     path: sink seq[string],
     t: typed,
-    filterTags: HashSet[string],
+    filterTags: seq[string],
+    tagFilterExpr: static string,
 ) =
   template makeFieldPath(fpath: var seq[string], fname: string) =
     if fpath.len == 0:
@@ -220,14 +221,23 @@ template doValidate*(
     else:
       a.fieldPairs
 
-  let inclDefault = filterTags.anyIt(it.cmpIgnoreCase("default") == 0)
+  when tagFilterExpr == "":
+    let inclDefault = filterTags.anyIt(it in default_tags)
 
+  #!fmt: off
   template ruleMatchTags(r: typed, body: untyped) =
     let tags = r.tags
-    if (tags.len == 0 and filterTags.len == 0) or (inclDefault and tags.len == 0) or (
-      tags.anyIt(filterTags.contains it)
-    ):
-      body
+    # filter by filterTags from varargs of proc
+    when tagFilterExpr == "":
+      if (tags.len == 0 and filterTags.len == 0) or (inclDefault and tags.len == 0) or (tags.anyIt(filterTags.contains it)): 
+        body
+    # filter by tagFilter expr from pragma of proc
+    else:
+      block:
+        let tt {.inject.} = if tags.len == 0: default_tags else: tags
+        if doTagFilter(tt, tagFilterExpr): 
+          body
+  #!fmt: on
 
   for fname, fval in fpairs(t):
     when fval.hasCustomPragma(valid):
@@ -239,9 +249,9 @@ template doValidate*(
       # nested valid
       when fval is object | ref object:
         if (not (fval is ref object)) or (not fval.isNil()):
-          doValidate(validateResult, fpath, fval, filterTags)
+          doValidate(validateResult, fpath, fval, filterTags, tagFilterExpr)
 
-macro validate*(p: untyped): untyped =
+macro validate*(tagFilter: static string = "", p: untyped): untyped =
   template expectVarStringParam(n: NimNode) =
     expectKind(n, nnkIdentDefs)
     expectKind(n[1], nnkBracketExpr)
@@ -256,9 +266,12 @@ macro validate*(p: untyped): untyped =
   expectKind(firstParamDef, nnkIdentDefs) # expect has first param
   let firstParamName = firstParamDef[0]
 
+  if p.params.len > 2 and tagFilter != "":
+    error "`tagFilter` and `varargs params` can not be used at the same time."
+
   var tagsDef: NimNode
   if p.params.len <= 2:
-    # let __tags = HashSet[string]()
+    # let __tags = newSeqOfCap[string](0)
     # cap == 0
     tagsDef =
       nnkLetSection.newTree(
@@ -266,7 +279,8 @@ macro validate*(p: untyped): untyped =
           newIdentNode("__tags"),
           newEmptyNode(),
           nnkCall.newTree(
-            nnkBracketExpr.newTree(newIdentNode("HashSet"), newIdentNode("string"))
+            nnkBracketExpr.newTree(newIdentNode("newSeqOfCap"), newIdentNode("string")),
+            newLit(0),
           ),
         )
       )
@@ -276,15 +290,13 @@ macro validate*(p: untyped): untyped =
     expectVarStringParam secondParamDef
     let secondParamName = secondParamDef[0]
 
-    # let __tags = secondParamName.toHashSet()
+    # let __tags = secondParamName.toSeq()
     tagsDef =
       nnkLetSection.newTree(
         nnkIdentDefs.newTree(
           newIdentNode("__tags"),
           newEmptyNode(),
-          nnkCall.newTree(
-            nnkDotExpr.newTree(secondParamName, newIdentNode("toHashSet"))
-          ),
+          nnkCall.newTree(nnkDotExpr.newTree(secondParamName, newIdentNode("toSeq"))),
         )
       )
 
@@ -299,7 +311,7 @@ macro validate*(p: untyped): untyped =
         )
       )
 
-  # doValidate(__validateResult, newSeq[string](), firstParamName, __tags)
+  # doValidate(__validateResult, newSeq[string](), firstParamName, __tags, tagFilter)
   let
     doValidateCall =
       nnkCall.newTree(
@@ -310,6 +322,7 @@ macro validate*(p: untyped): untyped =
         ),
         firstParamName,
         newIdentNode("__tags"),
+        newLit(tagFilter),
       )
 
   let

@@ -8,7 +8,7 @@
 import unittest
 
 import validate
-import std/sets
+import std/sequtils
 test "test-book":
   type
     Category = ref object
@@ -29,7 +29,13 @@ test "test-book":
       of onsale, sold:
         count {.valid: @[range(min = 100, tags = ["hide"])].}: int
 
-  proc validate(book: Book, tags: varargs[string]): ValidateResult {.validate.}
+  proc validate(
+    book: Book, filterTags: varargs[string]
+  ): ValidateResult {.validate: "".}
+
+  proc validateWithTagFilterExpr(
+    book: Book
+  ): ValidateResult {.validate: """ it in ["default","show","hide"] """.}
 
   let category = Category(name: "T")
   let
@@ -42,6 +48,7 @@ test "test-book":
         status: onsale,
         count: 10,
       )
-  let validateResult = book.validate("show", "Default")
+  # let validateResult = book.validate("default", "show", "hide")
+  let validateResult = book.validateWithTagFilterExpr()
   for error in validateResult.errors:
     echo error
