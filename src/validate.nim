@@ -214,10 +214,12 @@ proc validateRule(
   else:
     discard
 
-macro callCustomFn(f: static string, vv: untyped): untyped =
-  nnkStmtList.newTree(nnkCommand.newTree(newIdentNode(f), vv))
+macro callCustomFn(f: static string, v: untyped): untyped =
+  ## f(v)
+  nnkStmtList.newTree(nnkCommand.newTree(newIdentNode(f), v))
 
 macro doTagFilter(t: untyped, f: static string): untyped =
+  ## t.anyIt(f)
   nnkCall.newTree(nnkDotExpr.newTree(t, newIdentNode("anyIt")), parseExpr(f))
 
 const default_tags = @["default"]
@@ -267,14 +269,16 @@ template doValidate*(
       for rule in fval.getCustomPragmaVal(valid):
         ruleMatchTags(rule):
           validateRule(validateResult, rule, fpath, fval)
-    # {.validFn.}
+    # `callCustomFn` need `fn name` static string on compile-time but we can not get it from the rule of `{.valid.}`
+    # we add a new pragma `{.validFn.}` to get it
+    # {.validFn.} 
     when fval.hasCustomPragma(validFn):
       const (fn, msgId, msg, ttags) = fval.getCustomPragmaVal(validFn)
       let validFnRule = ValidateRule(kind: rkCustom, fn: fn, msgId: msgId, msg: msg, tags: ttags)
       ruleMatchTags(validFnRule):
         if not callCustomFn(fn, fval):
           validateResult.errors.add newValidateError(fpath, validFnRule)
-    # nested valid
+    # nested validate
     when fval is object | ref object:
       if (not (fval is ref object)) or (not fval.isNil()):
         doValidate(validateResult, fpath, fval, filterTags, tagFilterExpr)
