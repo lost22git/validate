@@ -9,6 +9,7 @@ type
     rkRange
     rkFloatRange
     rkLengthRange
+    rkCustom # used by {.validFn.}
 
 type
   ValidateRule* = object
@@ -26,11 +27,16 @@ type
       frange*: Slice[float]
     of rkLengthRange:
       lenrange*: Slice[Natural]
+    of rkCustom: # used by {.validFn.}
+      fn*: string
 
 type
   ValidateError* = object of ValueError
     path*: seq[string]
     rule*: ValidateRule
+
+proc newValidateError*(path: seq[string], rule: ValidateRule): ValidateError =
+  ValidateError(path: path, rule: rule)
 
 proc `$`*(error: ValidateError): string =
   let path = error.path.join(".")
@@ -52,6 +58,8 @@ proc `$`*(error: ValidateError): string =
         fmt"{path}: require match range `{rule.frange}`"
       of rkLengthRange:
         fmt"{path}: require match range `{rule.lenrange}`"
+      of rkCustom:
+        fmt"{path}: custom function `{rule.fn}` validate failed"
   else:
     result =
       case rule.kind
@@ -65,6 +73,8 @@ proc `$`*(error: ValidateError): string =
         rule.msg % ["frange", $(rule.frange)]
       of rkLengthRange:
         rule.msg % ["lenrange", $(rule.lenrange)]
+      of rkCustom:
+        rule.msg % ["fn", $(rule.fn)]
 
 type
   ValidateResult* = object
@@ -162,6 +172,10 @@ func length*(
 
 template valid*(rules: seq[ValidateRule] = @[]) {.pragma.}
 
+template validFn*(
+  fn: string, msgId: string = "", msg: string = "", tags: seq[string] = @[]
+) {.pragma.}
+
 proc validateRule(
     validateResult: var ValidateResult,
     rule: sink ValidateRule,
@@ -197,6 +211,11 @@ proc validateRule(
     when v is string | array | set | seq | Table | TableRef:
       if not rule.lenrange.contains(v.len):
         validateResult.errors.add ValidateError(path: path, rule: rule)
+  else:
+    discard
+
+macro callCustomFn(f: static string, vv: untyped): untyped =
+  nnkStmtList.newTree(nnkCommand.newTree(newIdentNode(f), vv))
 
 macro doTagFilter(t: untyped, f: static string): untyped =
   nnkCall.newTree(nnkDotExpr.newTree(t, newIdentNode("anyIt")), parseExpr(f))
@@ -225,31 +244,42 @@ template doValidate*(
     let inclDefault = filterTags.anyIt(it in default_tags)
 
   #!fmt: off
+
   template ruleMatchTags(r: typed, body: untyped) =
-    let tags = r.tags
-    # filter by filterTags from varargs of proc
-    when tagFilterExpr == "":
-      if (tags.len == 0 and filterTags.len == 0) or (inclDefault and tags.len == 0) or (tags.anyIt(filterTags.contains it)): 
-        body
-    # filter by tagFilter expr from pragma of proc
-    else:
-      block:
-        let tt {.inject.} = if tags.len == 0: default_tags else: tags
-        if doTagFilter(tt, tagFilterExpr): 
+    block:
+      let tags {.inject.} = r.tags
+      # filter by filterTags from varargs params of proc
+      when tagFilterExpr == "":
+        if (tags.len == 0 and filterTags.len == 0) or (inclDefault and tags.len == 0) or (tags.anyIt(filterTags.contains it)): 
           body
-  #!fmt: on
+      # filter by tagFilter expr from {.validate.} of proc
+      else:
+        block:
+          let tt {.inject.} = if tags.len == 0: default_tags else: tags
+          if doTagFilter(tt, tagFilterExpr): 
+            body
 
   for fname, fval in fpairs(t):
+    var fpath = path
+    makeFieldPath(fpath, fname)
+    # {.valid.}
     when fval.hasCustomPragma(valid):
-      var fpath = path
-      makeFieldPath(fpath, fname)
       for rule in fval.getCustomPragmaVal(valid):
         ruleMatchTags(rule):
           validateRule(validateResult, rule, fpath, fval)
-      # nested valid
-      when fval is object | ref object:
-        if (not (fval is ref object)) or (not fval.isNil()):
-          doValidate(validateResult, fpath, fval, filterTags, tagFilterExpr)
+    # {.validFn.}
+    when fval.hasCustomPragma(validFn):
+      const (fn, msgId, msg, ttags) = fval.getCustomPragmaVal(validFn)
+      let validFnRule = ValidateRule(kind: rkCustom, fn: fn, msgId: msgId, msg: msg, tags: ttags)
+      ruleMatchTags(validFnRule):
+        if not callCustomFn(fn, fval):
+          validateResult.errors.add newValidateError(fpath, validFnRule)
+    # nested valid
+    when fval is object | ref object:
+      if (not (fval is ref object)) or (not fval.isNil()):
+        doValidate(validateResult, fpath, fval, filterTags, tagFilterExpr)
+
+  #!fmt: on
 
 macro validate*(tagFilter: static string = "", p: untyped): untyped =
   template expectVarStringParam(n: NimNode) =

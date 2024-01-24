@@ -8,7 +8,7 @@
 import unittest
 
 import validate
-import std/sequtils
+import std/[sequtils, uri]
 test "test-book":
   type
     Category = ref object
@@ -19,9 +19,13 @@ test "test-book":
       onsale
       sold
 
+  proc isUrl(v: string): bool =
+    parseUri(v).isAbsolute()
+
   type
     Book = object
       isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}", tags = ["show"])].}: string
+      url {.validFn(fn = "isUrl", tags = @["show"]).}: string
       category {.valid: @[nonNil()].}: Category
       tags {.valid: @[length(min = 2, max = 4, tags = ["show"])].}: seq[string]
       price {.valid: @[frange(min = 5, max = 50, tags = ["hide"])].}: float
@@ -42,6 +46,7 @@ test "test-book":
     book =
       Book(
         isbn: "ISBN 979-8836539412",
+        url: "abc",
         category: category,
         tags: @["nim"],
         price: 52'd,
