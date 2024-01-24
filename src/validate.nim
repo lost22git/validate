@@ -173,7 +173,7 @@ func length*(
 template valid*(rules: seq[ValidateRule] = @[]) {.pragma.}
 
 template validFn*(
-  fn: string, msgId: string = "", msg: string = "", tags: seq[string] = @[]
+  fn: string, msgId: string = "", msg: string = "", tags: openArray[string] = []
 ) {.pragma.}
 
 proc validateRule(
@@ -274,7 +274,7 @@ template doValidate*(
     # {.validFn.} 
     when fval.hasCustomPragma(validFn):
       const (fn, msgId, msg, ttags) = fval.getCustomPragmaVal(validFn)
-      let validFnRule = ValidateRule(kind: rkCustom, fn: fn, msgId: msgId, msg: msg, tags: ttags)
+      let validFnRule = ValidateRule(kind: rkCustom, fn: fn, msgId: msgId, msg: msg, tags: ttags.toSeq())
       ruleMatchTags(validFnRule):
         if not callCustomFn(fn, fval):
           validateResult.errors.add newValidateError(fpath, validFnRule)

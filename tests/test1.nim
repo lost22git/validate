@@ -25,7 +25,7 @@ test "test-book":
   type
     Book = object
       isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}", tags = ["show"])].}: string
-      url {.validFn(fn = "isUrl", tags = @["show"]).}: string
+      url {.validFn(fn = "isUrl", tags = ["show"]).}: string
       category {.valid: @[nonNil()].}: Category
       tags {.valid: @[length(min = 2, max = 4, tags = ["show"])].}: seq[string]
       price {.valid: @[frange(min = 5, max = 50, tags = ["hide"])].}: float
