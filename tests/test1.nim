@@ -8,7 +8,7 @@
 import unittest
 
 import validate
-import std/[sequtils, uri]
+import std/[sequtils, strutils]
 test "test-book":
   type
     Category = ref object
@@ -19,19 +19,23 @@ test "test-book":
       onsale
       sold
 
-  proc isUrl(v: string): bool =
-    parseUri(v).isAbsolute()
+  proc isHttpUrl(v: string): bool =
+    v.startswith("http://")
+
+  #!fmt: off
 
   type
     Book = object
       isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}", tags = ["show"])].}: string
-      url {.validFn(fn = "isUrl", tags = ["show"]).}: string
+      url {.validFn(fn = "isHttpUrl", tags = ["show"], msg = "the url is not http url").}: string
       category {.valid: @[nonNil()].}: Category
       tags {.valid: @[length(min = 2, max = 4, tags = ["show"])].}: seq[string]
       price {.valid: @[frange(min = 5, max = 50, tags = ["hide"])].}: float
       case status: Status
       of onsale, sold:
         count {.valid: @[range(min = 100, tags = ["hide"])].}: int
+
+  #!fmt: on
 
   proc validate(
     book: Book, filterTags: varargs[string]
@@ -46,7 +50,7 @@ test "test-book":
     book =
       Book(
         isbn: "ISBN 979-8836539412",
-        url: "abc",
+        url: "ftp://127.0.0.1/books/1.pdf",
         category: category,
         tags: @["nim"],
         price: 52'd,
