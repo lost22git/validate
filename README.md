@@ -109,3 +109,20 @@ the price requires from 5.0 to 50.0
 Book.count: require match range `100 .. 9223372036854775807`
 ```
 
+## benchmark
+
+[bench.nim](bench/bench.nim)
+
+```
+root in validate/bench on  main [✘?] via 👑 v2.0.2
+❯ ./bench filterTags
+len: 1000000
+tag filter method: filterTags
+result: 1.203444μs/op
+
+root in validate/bench on  main [✘?] via 👑 v2.0.2
+❯ ./bench tagFilterExpr
+len: 1000000
+tag filter method: tagFilterExpr
+result: 1.186805μs/op
+```
