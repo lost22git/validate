@@ -20,7 +20,7 @@ A simple, not flexible, mediocre performance Object Fields Validator
 
 * std/sequtils
 * std/strutils
-* std/re (optional, unless use regex rule)
+* std/re
 
 
 ## pragmas
