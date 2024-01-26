@@ -1,4 +1,4 @@
-import std/[macros, re, strutils, strformat, tables, sequtils]
+import std/[macros, re, strutils, strformat, sequtils]
 
 type
   ValidateRuleKind* = enum
@@ -38,6 +38,7 @@ type
 proc newValidateError*(path: seq[string], rule: ValidateRule): ValidateError =
   ValidateError(path: path, rule: rule)
 
+#!fmt: off
 proc `$`*(error: ValidateError): string =
   let path = error.path.join(".")
   let rule = error.rule
@@ -68,14 +69,20 @@ proc `$`*(error: ValidateError): string =
       of rkRegex:
         rule.msg % ["pattern", rule.pattern]
       of rkRange:
-        rule.msg % ["irange", $(rule.irange)]
+        rule.msg % [
+          "irange", $(rule.irange), "min", $(rule.irange.a), "max", $(rule.irange.b)
+        ]
       of rkFloatRange:
-        rule.msg % ["frange", $(rule.frange)]
+        rule.msg % [
+          "frange", $(rule.frange), "min", $(rule.frange.a), "max", $(rule.frange.b)
+        ]
       of rkLengthRange:
-        rule.msg % ["lenrange", $(rule.lenrange)]
+        rule.msg % [
+          "lenrange", $(rule.lenrange), "min", $(rule.lenrange.a), "max", $(rule.lenrange.b)
+        ]
       of rkCustom:
         rule.msg % ["fn", $(rule.fn)]
-
+#!fmt: on
 type
   ValidateResult* = object
     errors*: seq[ValidateError]
@@ -188,7 +195,7 @@ proc validateRule(
       if v.isNil:
         validateResult.errors.add ValidateError(path: path, rule: rule)
   of rkNonEmpty:
-    when v is string | array | set | seq | Table | TableRef:
+    when v is string | array | set | seq:
       if v.len == 0:
         validateResult.errors.add ValidateError(path: path, rule: rule)
   of rkNonBlank:
@@ -208,7 +215,7 @@ proc validateRule(
       if not rule.frange.contains(v):
         validateResult.errors.add ValidateError(path: path, rule: rule)
   of rkLengthRange:
-    when v is string | array | set | seq | Table | TableRef:
+    when v is string | array | set | seq:
       if not rule.lenrange.contains(v.len):
         validateResult.errors.add ValidateError(path: path, rule: rule)
   else:

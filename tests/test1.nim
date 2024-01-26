@@ -30,7 +30,7 @@ test "test-book":
       url {.validFn(fn = "isHttpUrl", tags = ["show"], msg = "the url is not http url").}: string
       category {.valid: @[nonNil()].}: Category
       tags {.valid: @[length(min = 2, max = 4, tags = ["show"])].}: seq[string]
-      price {.valid: @[frange(min = 5, max = 50, tags = ["hide"])].}: float
+      price {.valid: @[frange(min = 5, max = 50, tags = ["hide"], msg = "the price requires from $min to $max")].}: float
       case status: Status
       of onsale, sold:
         count {.valid: @[range(min = 100, tags = ["hide"])].}: int
