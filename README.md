@@ -15,14 +15,6 @@ A simple, not flexible, mediocre performance Object Fields Validator
 
 * i18n validation error message
 
-
-## requires
-
-* std/sequtils
-* std/strutils
-* std/re
-
-
 ## pragmas
 
 {.valid: @[built-in rules].} for built-in validation rules
@@ -37,14 +29,16 @@ A simple, not flexible, mediocre performance Object Fields Validator
 |:----|:----|:----|:----|
 |nonNil|ref \| ptr \| pointer \| cstring|`a {.valid: @[nonNil()].}: ptr int`|not nil|
 |nonEmpty|string \| array \| set \| seq|`a {.valid: nonEmpty().}: string`|len > 0|
-|nonBlank|string|`a {.valid: @[nonBlank()].}: string`|not isEmptyOrWhiteSpace, use std/strutils, so you should import it|
-|regex|string|`a {.valid: @[regex(pattern="\d+")].}: string`| use std/re, so you should import it|
+|nonBlank|string|`a {.valid: @[nonBlank()].}: string`|not isEmptyOrWhiteSpace, use std/strutils|
+|regex|string|`a {.valid: @[regex(pattern="\d+")].}: string`| use std/re|
 |range|int|`a {.valid: @[range(min=1, max=10)].}: int`|int range|
 |frange|float|`a {.valid: @[frange(min=1,max=10)].}: float`|float range|
 |length|string \| array \| set \| seq|`a {.valid: @[length(min=1,max=10)].}: string`|length range|
 
 
 ## usage
+
+> NOTE: Due to use std/strutils, std/sequtils in generated code, you should import them where you use {.validate.}
 
 * code:
 ```nim
