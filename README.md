@@ -38,8 +38,8 @@ A simple, not flexible, mediocre performance Object Fields Validator
 
 ## usage
 
-> NOTE: 
-Due to use std/strutils, std/sequtils in generated code, you should import them where you use `{.validate.}`
+> [!NOTE]
+> Due to use std/strutils, std/sequtils in generated code, you should import them where you use `{.validate.}`
 
 * code:
 ```nim
