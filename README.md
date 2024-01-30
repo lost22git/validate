@@ -29,8 +29,8 @@ A simple, not flexible, mediocre performance Object Fields Validator
 |:----|:----|:----|:----|
 |nonNil|ref \| ptr \| pointer \| cstring|`a {.valid: @[nonNil()].}: ptr int`|not nil|
 |nonEmpty|string \| array \| set \| seq|`a {.valid: nonEmpty().}: string`|len > 0|
-|nonBlank|string|`a {.valid: @[nonBlank()].}: string`|not isEmptyOrWhiteSpace, use std/strutils|
-|regex|string|`a {.valid: @[regex(pattern="\d+")].}: string`| use std/re|
+|nonBlank|string|`a {.valid: @[nonBlank()].}: string`|not isEmptyOrWhiteSpace, use `std/strutils`|
+|regex|string|`a {.valid: @[regex(pattern="\d+")].}: string`| use `std/re`|
 |range|int|`a {.valid: @[range(min=1, max=10)].}: int`|int range|
 |frange|float|`a {.valid: @[frange(min=1,max=10)].}: float`|float range|
 |length|string \| array \| set \| seq|`a {.valid: @[length(min=1,max=10)].}: string`|length range|
@@ -39,7 +39,7 @@ A simple, not flexible, mediocre performance Object Fields Validator
 ## usage
 
 > [!NOTE]
-> Due to use std/strutils, std/sequtils in generated code, you should import them where you use `{.validate.}`
+> Due to use `std/strutils`, `std/sequtils` in generated code, you should import them where you use `{.validate.}`
 
 * code:
 ```nim
