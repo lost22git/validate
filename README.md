@@ -17,11 +17,11 @@ A simple, not flexible, mediocre performance Object Fields Validator
 
 ## pragmas
 
-{.valid: @[built-in rules].} for built-in validation rules
+`{.valid: @[built-in rules].}` for built-in validation rules
 
-{.validFn(fn="function name").} for custom validation function
+`{.validFn(fn="function name").}` for custom validation function
 
-{.validate: "tag filter expr".} for marking a proc as validation proc
+`{.validate: "tag filter expr".}` for marking a proc as validation proc
 
 ## built-in validation rules
 
@@ -38,7 +38,8 @@ A simple, not flexible, mediocre performance Object Fields Validator
 
 ## usage
 
-> NOTE: Due to use std/strutils, std/sequtils in generated code, you should import them where you use {.validate.}
+> NOTE: 
+Due to use std/strutils, std/sequtils in generated code, you should import them where you use `{.validate.}`
 
 * code:
 ```nim
