@@ -30,7 +30,6 @@ A simple, not flexible, mediocre performance Object Fields Validator
 |nonNil|ref \| ptr \| pointer \| cstring|`a {.valid: @[nonNil()].}: ptr int`|not nil|
 |nonEmpty|string \| array \| set \| seq|`a {.valid: nonEmpty().}: string`|len > 0|
 |nonBlank|string|`a {.valid: @[nonBlank()].}: string`|not isEmptyOrWhiteSpace, use `std/strutils`|
-|regex|string|`a {.valid: @[regex(pattern="\d+")].}: string`| use `std/re`|
 |range|int|`a {.valid: @[range(min=1, max=10)].}: int`|int range|
 |frange|float|`a {.valid: @[frange(min=1,max=10)].}: float`|float range|
 |length|string \| array \| set \| seq|`a {.valid: @[length(min=1,max=10)].}: string`|length range|
@@ -57,8 +56,6 @@ proc isHttpUrl(v: string): bool =
     v.startswith("http://")
 
 type Book = object
-  # use built-in validation rules
-  isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}", tags = ["show"])].}: string
   # {.validFn.} use custom validate function
   url {.validFn(fn = "isHttpUrl", tags = ["show"], msg = "the url is not http url").}: string
   # nested validation
@@ -80,7 +77,6 @@ proc validateWithTagFilterExpr(book: Book): ValidateResult {.validate: """ it in
 
 let category = Category(name: "T")
 let book = Book(
-    isbn: "ISBN 979-8836539412",
     url: "ftp://127.0.0.1/books/1.pdf",
     category: category,
     tags: @["nim"],

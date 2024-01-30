@@ -1,11 +1,10 @@
-import std/[macros, re, strutils, strformat, sequtils]
+import std/[macros, strutils, strformat, sequtils]
 
 type
   ValidateRuleKind* = enum
     rkNonNil
     rkNonEmpty
     rkNonBlank
-    rkRegex
     rkRange
     rkFloatRange
     rkLengthRange
@@ -19,8 +18,6 @@ type
     case kind*: ValidateRuleKind
     of rkNonNil, rkNonEmpty, rkNonBlank:
       discard
-    of rkRegex:
-      pattern*: string
     of rkRange:
       irange*: Slice[int]
     of rkFloatRange:
@@ -51,8 +48,6 @@ proc `$`*(error: ValidateError): string =
         fmt"{path}: require not empty"
       of rkNonBlank:
         fmt"{path}: require not blank"
-      of rkRegex:
-        fmt"{path}: require match regex pattern `{rule.pattern}`"
       of rkRange:
         fmt"{path}: require match range `{rule.irange}`"
       of rkFloatRange:
@@ -66,8 +61,6 @@ proc `$`*(error: ValidateError): string =
       case rule.kind
       of rkNonNil, rkNonEmpty, rkNonBlank:
         rule.msg
-      of rkRegex:
-        rule.msg % ["pattern", rule.pattern]
       of rkRange:
         rule.msg % [
           "irange", $(rule.irange), "min", $(rule.irange.a), "max", $(rule.irange.b)
@@ -104,13 +97,6 @@ func nonBlank*(
     msgId: string = "", msg: string = "", tags: openArray[string] = []
 ): ValidateRule =
   ValidateRule(kind: rkNonBlank, msgId: msgId, msg: msg, tags: tags.toSeq())
-
-func regex*(
-    msgId: string = "", msg: string = "", tags: openArray[string] = [], pattern: string
-): ValidateRule =
-  ValidateRule(
-    kind: rkRegex, msgId: msgId, msg: msg, tags: tags.toSeq(), pattern: pattern
-  )
 
 func range*(
     msgId: string = "",
@@ -201,10 +187,6 @@ proc validateRule(
   of rkNonBlank:
     when v is string:
       if v.isEmptyOrWhitespace():
-        validateResult.errors.add ValidateError(path: path, rule: rule)
-  of rkRegex:
-    when v is string:
-      if not match(v, re(rule.pattern)):
         validateResult.errors.add ValidateError(path: path, rule: rule)
   of rkRange:
     when v is int:

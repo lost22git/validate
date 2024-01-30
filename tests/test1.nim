@@ -26,7 +26,6 @@ test "test-book":
 
   type
     Book = object
-      isbn {.valid: @[regex(pattern = r"ISBN \d{3}-\d{10}", tags = ["show"])].}: string
       url {.validFn(fn = "isHttpUrl", tags = ["show"], msg = "the url is not http url").}: string
       category {.valid: @[nonNil()].}: Category
       tags {.valid: @[length(min = 2, max = 4, tags = ["show"])].}: seq[string]
@@ -49,7 +48,6 @@ test "test-book":
   let
     book =
       Book(
-        isbn: "ISBN 979-8836539412",
         url: "ftp://127.0.0.1/books/1.pdf",
         category: category,
         tags: @["nim"],
