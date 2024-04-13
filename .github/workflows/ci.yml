@@ -21,7 +21,9 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Installing choosenim
-        run: curl https://nim-lang.org/choosenim/init.sh -sSf | sh
-
+        run: |
+          curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
+          sh init.sh -y
+        
       - name: Testing
         run: nimble test
