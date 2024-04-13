@@ -26,4 +26,6 @@ jobs:
           sh init.sh -y
         
       - name: Testing
-        run: nimble test
+        run: |
+          export PATH=$HOME/.nimble/bin:$PATH
+          nimble test
