@@ -1,14 +1,12 @@
 import ../src/validate
 
 import std/[strutils, sequtils, times, monotimes, cmdline]
-type
-  Category = ref object
-    name {.valid: @[length(min = 2)].}: string
+type Category = ref object
+  name {.valid: @[length(min = 2)].}: string
 
-type
-  Status = enum
-    onsale
-    sold
+type Status = enum
+  onsale
+  sold
 
 proc isHttpUrl(v: string): bool =
   v.startswith("http")
@@ -34,16 +32,14 @@ proc validateWithTagFilterExpr(
 ): ValidateResult {.validate: """ it in ["default","show","hide"] """.}
 
 let category = Category(name: "T")
-let
-  book =
-    Book(
-      url: "ftp://127.0.0.1/books/979-8836539412jk",
-      category: category,
-      tags: @["nim"],
-      price: 52'd,
-      status: onsale,
-      count: 10,
-    )
+let book = Book(
+  url: "ftp://127.0.0.1/books/979-8836539412jk",
+  category: category,
+  tags: @["nim"],
+  price: 52'd,
+  status: onsale,
+  count: 10,
+)
 
 let size = 1000000
 let all = newSeqWith(size, book)
@@ -55,15 +51,14 @@ echo "tag filter method: ", tagFilterMethod
 let st = getmonoTime()
 
 for s in all:
-  let
-    validateResult =
-      case tagFilterMethod
-      of "filterTags":
-        s.validate("default", "show", "hide")
-      of "tagFilterExpr":
-        s.validateWithTagFilterExpr()
-      else:
-        ValidateResult()
+  let validateResult =
+    case tagFilterMethod
+    of "filterTags":
+      s.validate("default", "show", "hide")
+    of "tagFilterExpr":
+      s.validateWithTagFilterExpr()
+    else:
+      ValidateResult()
 
   if validateResult.errors.len == 0:
     raise newException(ValueError, "panic")

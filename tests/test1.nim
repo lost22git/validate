@@ -10,14 +10,12 @@ import unittest
 import validate
 import std/[sequtils, strutils]
 test "test-book":
-  type
-    Category = ref object
-      name {.valid: @[length(min = 2)].}: string
+  type Category = ref object
+    name {.valid: @[length(min = 2)].}: string
 
-  type
-    Status = enum
-      onsale
-      sold
+  type Status = enum
+    onsale
+    sold
 
   proc isHttpUrl(v: string): bool =
     v.startswith("http://")
@@ -45,16 +43,14 @@ test "test-book":
   ): ValidateResult {.validate: """ it in ["default","show","hide"] """.}
 
   let category = Category(name: "T")
-  let
-    book =
-      Book(
-        url: "ftp://127.0.0.1/books/1.pdf",
-        category: category,
-        tags: @["nim"],
-        price: 52'd,
-        status: onsale,
-        count: 10,
-      )
+  let book = Book(
+    url: "ftp://127.0.0.1/books/1.pdf",
+    category: category,
+    tags: @["nim"],
+    price: 52'd,
+    status: onsale,
+    count: 10,
+  )
   # let validateResult = book.validate("default", "show", "hide")
   let validateResult = book.validateWithTagFilterExpr()
   for error in validateResult.errors:

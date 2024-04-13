@@ -1,36 +1,33 @@
 import std/[macros, strutils, strformat, sequtils]
 
-type
-  ValidateRuleKind* = enum
-    rkNonNil
-    rkNonEmpty
-    rkNonBlank
-    rkRange
-    rkFloatRange
-    rkLengthRange
-    rkCustom # used by {.validFn.}
+type ValidateRuleKind* = enum
+  rkNonNil
+  rkNonEmpty
+  rkNonBlank
+  rkRange
+  rkFloatRange
+  rkLengthRange
+  rkCustom # used by {.validFn.}
 
-type
-  ValidateRule* = object
-    msgId*: string
-    msg*: string
-    tags*: seq[string]
-    case kind*: ValidateRuleKind
-    of rkNonNil, rkNonEmpty, rkNonBlank:
-      discard
-    of rkRange:
-      irange*: Slice[int]
-    of rkFloatRange:
-      frange*: Slice[float]
-    of rkLengthRange:
-      lenrange*: Slice[Natural]
-    of rkCustom: # used by {.validFn.}
-      fn*: string
+type ValidateRule* = object
+  msgId*: string
+  msg*: string
+  tags*: seq[string]
+  case kind*: ValidateRuleKind
+  of rkNonNil, rkNonEmpty, rkNonBlank:
+    discard
+  of rkRange:
+    irange*: Slice[int]
+  of rkFloatRange:
+    frange*: Slice[float]
+  of rkLengthRange:
+    lenrange*: Slice[Natural]
+  of rkCustom: # used by {.validFn.}
+    fn*: string
 
-type
-  ValidateError* = object of ValueError
-    path*: seq[string]
-    rule*: ValidateRule
+type ValidateError* = object of ValueError
+  path*: seq[string]
+  rule*: ValidateRule
 
 proc newValidateError*(path: seq[string], rule: ValidateRule): ValidateError =
   ValidateError(path: path, rule: rule)
@@ -76,9 +73,8 @@ proc `$`*(error: ValidateError): string =
       of rkCustom:
         rule.msg % ["fn", $(rule.fn)]
 #!fmt: on
-type
-  ValidateResult* = object
-    errors*: seq[ValidateError]
+type ValidateResult* = object
+  errors*: seq[ValidateError]
 
 func hasError*(validateResult: ValidateResult): bool =
   validateResult.errors.len > 0
@@ -106,7 +102,7 @@ func range*(
     max: int = int.high,
 ): ValidateRule =
   ValidateRule(
-    kind: rkRange, msgId: msgId, msg: msg, tags: tags.toSeq(), irange: min..max
+    kind: rkRange, msgId: msgId, msg: msg, tags: tags.toSeq(), irange: min .. max
   )
 
 func range*(
@@ -127,7 +123,7 @@ func frange*(
     max: float = float.high,
 ): ValidateRule =
   ValidateRule(
-    kind: rkFloatRange, msgId: msgId, msg: msg, tags: tags.toSeq(), frange: min..max
+    kind: rkFloatRange, msgId: msgId, msg: msg, tags: tags.toSeq(), frange: min .. max
   )
 
 func frange*(
@@ -148,7 +144,11 @@ func length*(
     max: Natural = Natural.high,
 ): ValidateRule =
   ValidateRule(
-    kind: rkLengthRange, msgId: msgId, msg: msg, tags: tags.toSeq(), lenrange: min..max
+    kind: rkLengthRange,
+    msgId: msgId,
+    msg: msg,
+    tags: tags.toSeq(),
+    lenrange: min .. max,
   )
 
 func length*(
@@ -296,17 +296,16 @@ macro validate*(tagFilter: static string = "", p: untyped): untyped =
   if p.params.len <= 2:
     # let __tags = newSeqOfCap[string](0)
     # cap == 0
-    tagsDef =
-      nnkLetSection.newTree(
-        nnkIdentDefs.newTree(
-          newIdentNode("__tags"),
-          newEmptyNode(),
-          nnkCall.newTree(
-            nnkBracketExpr.newTree(newIdentNode("newSeqOfCap"), newIdentNode("string")),
-            newLit(0),
-          ),
-        )
+    tagsDef = nnkLetSection.newTree(
+      nnkIdentDefs.newTree(
+        newIdentNode("__tags"),
+        newEmptyNode(),
+        nnkCall.newTree(
+          nnkBracketExpr.newTree(newIdentNode("newSeqOfCap"), newIdentNode("string")),
+          newLit(0),
+        ),
       )
+    )
   else:
     # expect secondParam is a varargs[string]
     let secondParamDef = p.params[2]
@@ -314,49 +313,42 @@ macro validate*(tagFilter: static string = "", p: untyped): untyped =
     let secondParamName = secondParamDef[0]
 
     # let __tags = secondParamName.toSeq()
-    tagsDef =
-      nnkLetSection.newTree(
-        nnkIdentDefs.newTree(
-          newIdentNode("__tags"),
-          newEmptyNode(),
-          nnkCall.newTree(nnkDotExpr.newTree(secondParamName, newIdentNode("toSeq"))),
-        )
+    tagsDef = nnkLetSection.newTree(
+      nnkIdentDefs.newTree(
+        newIdentNode("__tags"),
+        newEmptyNode(),
+        nnkCall.newTree(nnkDotExpr.newTree(secondParamName, newIdentNode("toSeq"))),
       )
+    )
 
   # var __validateResult = ValidateResult()
-  let
-    validateResultDef =
-      nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-          newIdentNode("__validateResult"),
-          newEmptyNode(),
-          nnkCall.newTree(newIdentNode("ValidateResult")),
-        )
-      )
+  let validateResultDef = nnkVarSection.newTree(
+    nnkIdentDefs.newTree(
+      newIdentNode("__validateResult"),
+      newEmptyNode(),
+      nnkCall.newTree(newIdentNode("ValidateResult")),
+    )
+  )
 
   # doValidate(__validateResult, newSeq[string](), firstParamName, __tags, tagFilter)
-  let
-    doValidateCall =
-      nnkCall.newTree(
-        newIdentNode("doValidate"),
-        newIdentNode("__validateResult"),
-        nnkCall.newTree(
-          nnkBracketExpr.newTree(newIdentNode("newSeq"), newIdentNode("string"))
-        ),
-        firstParamName,
-        newIdentNode("__tags"),
-        newLit(tagFilter),
-      )
+  let doValidateCall = nnkCall.newTree(
+    newIdentNode("doValidate"),
+    newIdentNode("__validateResult"),
+    nnkCall.newTree(
+      nnkBracketExpr.newTree(newIdentNode("newSeq"), newIdentNode("string"))
+    ),
+    firstParamName,
+    newIdentNode("__tags"),
+    newLit(tagFilter),
+  )
 
-  let
-    newBody =
-      nnkStmtList.newTree(
-        tagsDef,
-        validateResultDef,
-        doValidateCall,
-        # result = __validateResult
-        nnkAsgn.newTree(newIdentNode("result"), newIdentNode("__validateResult")),
-      )
+  let newBody = nnkStmtList.newTree(
+    tagsDef,
+    validateResultDef,
+    doValidateCall,
+    # result = __validateResult
+    nnkAsgn.newTree(newIdentNode("result"), newIdentNode("__validateResult")),
+  )
 
   # add to body
   p.body = newBody
